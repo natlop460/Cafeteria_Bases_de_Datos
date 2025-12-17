@@ -1,0 +1,246 @@
+-- =====================================================
+-- FASE 2: PROCEDIMIENTOS ALMACENADOS (20%)
+-- Archivo: 02_procedimientos.sql
+-- Cafetería B&B - Proyecto 2
+-- =====================================================
+-- INSTRUCCIONES PARA EL ESTUDIANTE:
+-- Complete los procedimientos almacenados marcados con TODO
+-- Cada procedimiento tiene la estructura básica proporcionada
+-- Debe implementar la lógica interna
+-- =====================================================
+
+USE cafeteria_bb;
+
+DELIMITER //
+
+-- =====================================================
+-- EJERCICIO 2.1: SP_CREAR_PEDIDO (8 puntos)
+-- 
+-- Crea un nuevo pedido con sus items, actualiza stock
+-- y calcula totales usando transacciones
+-- 
+-- Parámetros de entrada:
+-- - p_cliente_id: ID del cliente
+-- - p_sucursal_id: ID de la sucursal  
+-- - p_canal_venta: Canal de venta (MOSTRADOR, PICKUP, DELIVERY)
+-- - p_items_json: JSON con los items del pedido
+--   Formato: [{"producto_id": 1, "cantidad": 2}, ...]
+-- - p_direccion_entrega: Dirección para delivery (puede ser NULL)
+--
+-- El procedimiento debe:
+-- 1. Validar que el cliente existe y está activo
+-- 2. Validar que la sucursal existe y está activa
+-- 3. Crear el pedido con estado 'PENDIENTE'
+-- 4. Procesar cada item del JSON:
+--    - Validar stock disponible
+--    - Obtener precio del producto
+--    - Insertar en ITEM_PEDIDO
+--    - Actualizar stock del producto
+-- 5. Calcular subtotal, impuesto (13%) y total
+-- 6. Actualizar el pedido con los totales
+-- 7. Usar transacción con ROLLBACK si hay error
+-- =====================================================
+
+-- TODO: Descomente y complete el procedimiento
+-- DROP PROCEDURE IF EXISTS SP_CREAR_PEDIDO//
+--
+-- CREATE PROCEDURE SP_CREAR_PEDIDO(
+--     IN p_cliente_id INT,
+--     IN p_sucursal_id INT,
+--     IN p_canal_venta VARCHAR(20),
+--     IN p_items_json JSON,
+--     IN p_direccion_entrega VARCHAR(255)
+-- )
+-- BEGIN
+--     DECLARE v_pedido_id INT;
+--     DECLARE v_subtotal DECIMAL(10,2) DEFAULT 0;
+--     DECLARE v_impuesto DECIMAL(10,2) DEFAULT 0;
+--     DECLARE v_total DECIMAL(10,2) DEFAULT 0;
+--
+--     DECLARE EXIT HANDLER FOR SQLEXCEPTION
+--     BEGIN
+--         ROLLBACK;
+--         RESIGNAL;
+--     END;
+--
+--     START TRANSACTION;
+--
+--     -- TODO: Validar que el cliente existe y está activo
+--
+--     -- TODO: Validar que la sucursal existe y está activa
+--
+--     -- TODO: Crear el pedido inicial en tabla PEDIDO
+--
+--     -- TODO: Obtener el ID del pedido creado usando LAST_INSERT_ID()
+--
+--     -- TODO: Procesar cada item del JSON (usar WHILE y JSON_EXTRACT)
+--
+--     -- TODO: Calcular impuesto (13%) y total
+--
+--     -- TODO: Actualizar totales del pedido
+--
+--     COMMIT;
+--
+--     SELECT v_pedido_id AS pedido_id, v_total AS total;
+-- END//
+
+
+-- =====================================================
+-- EJERCICIO 2.2: SP_PROCESAR_PAGO (5 puntos)
+-- 
+-- Registra un pago para un pedido, actualiza estado
+-- y genera puntos de fidelidad
+-- 
+-- Parámetros:
+-- - p_pedido_id: ID del pedido
+-- - p_monto: Monto del pago
+-- - p_metodo_pago: EFECTIVO, TARJETA, SINPE, TRANSFERENCIA
+-- - p_referencia: Referencia del pago (puede ser NULL)
+--
+-- El procedimiento debe:
+-- 1. Validar que el pedido existe
+-- 2. Registrar el pago en tabla PAGO con estado 'COMPLETADO'
+-- 3. Calcular total pagado hasta el momento
+-- 4. Si el pago cubre el total:
+--    - Cambiar estado del pedido a 'PREPARANDO'
+--    - Calcular puntos (1 punto por cada 1000 colones)
+--    - Actualizar puntos del cliente
+-- =====================================================
+
+-- TODO: Descomente y complete el procedimiento
+-- DROP PROCEDURE IF EXISTS SP_PROCESAR_PAGO//
+--
+-- CREATE PROCEDURE SP_PROCESAR_PAGO(
+--     IN p_pedido_id INT,
+--     IN p_monto DECIMAL(10,2),
+--     IN p_metodo_pago VARCHAR(30),
+--     IN p_referencia VARCHAR(100)
+-- )
+-- BEGIN
+--     DECLARE v_pago_id INT;
+--     DECLARE v_cliente_id INT;
+--     DECLARE v_total_pedido DECIMAL(10,2);
+--     DECLARE v_total_pagado DECIMAL(10,2);
+--     DECLARE v_puntos_ganados INT;
+--
+--     DECLARE EXIT HANDLER FOR SQLEXCEPTION
+--     BEGIN
+--         ROLLBACK;
+--         RESIGNAL;
+--     END;
+--
+--     START TRANSACTION;
+--
+--     -- TODO: Obtener información del pedido (cliente_id y total)
+--
+--     -- TODO: Validar que el pedido existe
+--
+--     -- TODO: Registrar el pago en tabla PAGO
+--
+--     -- TODO: Calcular total pagado hasta el momento
+--
+--     -- TODO: Si está completamente pagado, actualizar estado y dar puntos
+--
+--     COMMIT;
+--
+--     SELECT v_pago_id AS pago_id, v_puntos_ganados AS puntos_ganados;
+-- END//
+
+
+-- =====================================================
+-- EJERCICIO 2.3: SP_CANCELAR_PEDIDO (5 puntos)
+-- 
+-- Cancela un pedido, restaura stock y procesa reembolsos
+-- 
+-- Parámetros:
+-- - p_pedido_id: ID del pedido a cancelar
+-- - p_motivo: Motivo de la cancelación
+--
+-- El procedimiento debe:
+-- 1. Validar que el pedido existe
+-- 2. Validar que no esté ya cancelado o entregado
+-- 3. Restaurar stock de cada producto (usar cursor)
+-- 4. Procesar reembolsos para pagos existentes
+-- 5. Cambiar estado a 'CANCELADO' y guardar motivo
+-- =====================================================
+
+-- TODO: Descomente y complete el procedimiento
+-- DROP PROCEDURE IF EXISTS SP_CANCELAR_PEDIDO//
+--
+-- CREATE PROCEDURE SP_CANCELAR_PEDIDO(
+--     IN p_pedido_id INT,
+--     IN p_motivo VARCHAR(255)
+-- )
+-- BEGIN
+--     DECLARE v_estado_actual VARCHAR(20);
+--     DECLARE done INT DEFAULT FALSE;
+--     DECLARE v_producto_id INT;
+--     DECLARE v_cantidad INT;
+--
+--     -- TODO: Declarar cursores para items y pagos
+--
+--     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+--
+--     DECLARE EXIT HANDLER FOR SQLEXCEPTION
+--     BEGIN
+--         ROLLBACK;
+--         RESIGNAL;
+--     END;
+--
+--     START TRANSACTION;
+--
+--     -- TODO: Obtener estado actual del pedido
+--
+--     -- TODO: Validar que el pedido existe y no está cancelado/entregado
+--
+--     -- TODO: Restaurar stock usando cursor
+--
+--     -- TODO: Procesar reembolsos usando cursor
+--
+--     -- TODO: Actualizar estado del pedido a CANCELADO
+--
+--     COMMIT;
+--
+--     SELECT 'Pedido cancelado exitosamente' AS mensaje;
+-- END//
+
+
+-- =====================================================
+-- EJERCICIO 2.4: SP_REPORTE_VENTAS_PERIODO (2 puntos)
+-- 
+-- Genera un reporte de ventas entre dos fechas
+-- agrupado por categoría de producto
+-- 
+-- Parámetros:
+-- - p_fecha_inicio: Fecha inicial del período
+-- - p_fecha_fin: Fecha final del período
+--
+-- Debe retornar por cada categoría:
+-- - nombre de categoría
+-- - cantidad_pedidos: pedidos distintos
+-- - unidades_vendidas: suma de cantidades
+-- - subtotal_ventas, impuestos, total_ventas
+-- - precio_promedio
+-- - productos_diferentes: cantidad de productos distintos vendidos
+-- =====================================================
+
+-- TODO: Descomente y complete el procedimiento
+-- DROP PROCEDURE IF EXISTS SP_REPORTE_VENTAS_PERIODO//
+--
+-- CREATE PROCEDURE SP_REPORTE_VENTAS_PERIODO(
+--     IN p_fecha_inicio DATE,
+--     IN p_fecha_fin DATE
+-- )
+-- BEGIN
+--     -- TODO: Escriba el SELECT con JOINs entre CATEGORIA, PRODUCTO, ITEM_PEDIDO y PEDIDO
+--     -- Debe calcular: cantidad_pedidos, unidades_vendidas, subtotal_ventas, impuestos,
+--     -- total_ventas, precio_promedio, productos_diferentes
+--     -- Filtrar por fecha y estado != 'CANCELADO'
+--     -- Agrupar por categoría
+--     -- Ordenar por total_ventas DESC
+-- END//
+
+
+DELIMITER ;
+
+COMMIT;

@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: cafeteria_mysql
+    restart: always
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: cafeteria2025
+      MYSQL_DATABASE: cafeteria_bb
+      MYSQL_USER: cafeteria_user
+      MYSQL_PASSWORD: cafeteria_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/procedures/01_gestion_objetos.sql:/docker-entrypoint-initdb.d/02_gestion_objetos.sql
+      - ./database/procedures/02_procedimientos.sql:/docker-entrypoint-initdb.d/03_procedimientos.sql
+      - ./database/procedures/03_funciones.sql:/docker-entrypoint-initdb.d/04_funciones.sql
+      - ./database/procedures/04_triggers.sql:/docker-entrypoint-initdb.d/05_triggers.sql
+      - ./database/procedures/05_indices.sql:/docker-entrypoint-initdb.d/06_indices.sql
+      - ./database/procedures/06_transacciones.sql:/docker-entrypoint-initdb.d/07_transacciones.sql
+    networks:
+      - cafeteria_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # phpMyAdmin para administrar MySQL
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: cafeteria_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: cafeteria2025
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cafeteria_network
+
+  # MongoDB para NoSQL
+  mongodb:
+    image: mongo:6.0
+    container_name: cafeteria_mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: cafeteria_nosql
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./database/mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - cafeteria_network
+
+  # Mongo Express para administrar MongoDB
+  mongo-express:
+    image: mongo-express
+    container_name: cafeteria_mongo_express
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+    networks:
+      - cafeteria_network
+
+  # Backend Node.js
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cafeteria_backend
+    restart: always
+    environment:
+      NODE_ENV: development
+      DB_HOST: mysql
+      DB_USER: cafeteria_user
+      DB_PASSWORD: cafeteria_pass
+      DB_NAME: cafeteria_bb
+      MONGO_URI: mongodb://admin:admin123@mongodb:27017/cafeteria_nosql?authSource=admin
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+    networks:
+      - cafeteria_network
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cafeteria_frontend
+    restart: always
+    environment:
+      REACT_APP_API_URL: http://localhost:4000/api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - cafeteria_network
+
+networks:
+  cafeteria_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  mongodb_data:
