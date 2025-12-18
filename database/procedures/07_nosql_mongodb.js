@@ -107,16 +107,59 @@ db = db.getSiblingDB('cafeteria_nosql');
 // }
 // =====================================================
 
-// TODO: Inserte sus logs aquí
-// db.activity_logs.insertMany([
-//   {
-//     accion: "login",
-//     usuario: "ejemplo@email.com",
-//     timestamp: new Date(),
-//     detalles: { ip: "...", dispositivo: "...", exitoso: true }
-//   },
-//   // ... agregar más logs con diferentes acciones
-// ]);
+db.activity_logs.insertMany([
+  {
+    accion: "login",
+    usuario: "ana@cafeteriabb.com",
+    timestamp: new Date(),
+    detalles: {
+      ip: "192.168.1.10",
+      dispositivo: "Chrome / Windows",
+      exitoso: true
+    }
+  },
+  {
+    accion: "ver_producto",
+    usuario: "ana@cafeteriabb.com",
+    productoId: 1,
+    nombreProducto: "Espresso",
+    timestamp: new Date(),
+    detalles: {
+      origen: "home",
+      duracion_segundos: 45
+    }
+  },
+  {
+    accion: "ver_producto",
+    usuario: "carlos@cafeteriabb.com",
+    productoId: 2,
+    nombreProducto: "Capuccino",
+    timestamp: new Date(),
+    detalles: {
+      origen: "busqueda",
+      duracion_segundos: 30
+    }
+  },
+  {
+    accion: "crear_pedido",
+    usuario: "carlos@cafeteriabb.com",
+    timestamp: new Date(),
+    detalles: {
+      pedidoId: 15,
+      total: 8.50,
+      metodo_pago: "tarjeta"
+    }
+  },
+  {
+    accion: "logout",
+    usuario: "ana@cafeteriabb.com",
+    timestamp: new Date(),
+    detalles: {
+      motivo: "cierre_manual"
+    }
+  }
+]);
+
 
 
 
@@ -151,12 +194,64 @@ db = db.getSiblingDB('cafeteria_nosql');
 // }
 // =====================================================
 
-// TODO: Inserte sus reseñas aquí
-// db.resenas_productos.insertMany([
-//   { ... },
-//   { ... },
-//   // ... agregar más reseñas
-// ]);
+db.resenas_productos.insertMany([
+  {
+    productoId: 1,
+    nombreProducto: "Espresso",
+    clienteId: 1,
+    nombreCliente: "Ana Gómez",
+    calificacion: 5,
+    comentario: "Excelente sabor y aroma",
+    fecha: new Date(),
+    verificado: true,
+    util: 12
+  },
+  {
+    productoId: 1,
+    nombreProducto: "Espresso",
+    clienteId: 2,
+    nombreCliente: "Carlos Ruiz",
+    calificacion: 4,
+    comentario: "Muy bueno, un poco fuerte",
+    fecha: new Date(),
+    verificado: true,
+    util: 5
+  },
+  {
+    productoId: 2,
+    nombreProducto: "Capuccino",
+    clienteId: 3,
+    nombreCliente: "María López",
+    calificacion: 5,
+    comentario: "Perfecta combinación de café y leche",
+    fecha: new Date(),
+    verificado: true,
+    util: 20
+  },
+  {
+    productoId: 3,
+    nombreProducto: "Latte",
+    clienteId: null,
+    nombreCliente: "Cliente Anónimo",
+    calificacion: 3,
+    comentario: "Está bien, nada especial",
+    fecha: new Date(),
+    verificado: false,
+    util: 2
+  },
+  {
+    productoId: 2,
+    nombreProducto: "Capuccino",
+    clienteId: 4,
+    nombreCliente: "Luis Fernández",
+    calificacion: 4,
+    comentario: "Muy cremoso",
+    fecha: new Date(),
+    verificado: true,
+    util: 7
+  }
+]);
+
 
 
 
@@ -172,20 +267,20 @@ db = db.getSiblingDB('cafeteria_nosql');
 // - promedio: promedio de calificaciones
 // - total_resenas: cantidad de reseñas
 
-// TODO: Complete la agregación
-// db.resenas_productos.aggregate([
-//   {
-//     $group: {
-//       _id: "$productoId",
-//       nombreProducto: { $first: "$nombreProducto" },
-//       promedio: { $avg: "$calificacion" },
-//       total_resenas: { $sum: 1 }
-//     }
-//   },
-//   {
-//     $sort: { promedio: -1 }
-//   }
-// ]);
+db.resenas_productos.aggregate([
+  {
+    $group: {
+      _id: "$productoId",
+      nombreProducto: { $first: "$nombreProducto" },
+      promedio: { $avg: "$calificacion" },
+      total_resenas: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { promedio: -1 }
+  }
+]);
+
 
 
 
@@ -193,25 +288,25 @@ db = db.getSiblingDB('cafeteria_nosql');
 // 7.3b: Productos más visitados (1 punto)
 // Agregación sobre activity_logs para encontrar productos más vistos
 
-// TODO: Complete la agregación
-// db.activity_logs.aggregate([
-//   {
-//     $match: { accion: "ver_producto" }
-//   },
-//   {
-//     $group: {
-//       _id: "$productoId",
-//       nombreProducto: { $first: "$nombreProducto" },
-//       visitas: { $sum: 1 }
-//     }
-//   },
-//   {
-//     $sort: { visitas: -1 }
-//   },
-//   {
-//     $limit: 10
-//   }
-// ]);
+db.activity_logs.aggregate([
+  {
+    $match: { accion: "ver_producto" }
+  },
+  {
+    $group: {
+      _id: "$productoId",
+      nombreProducto: { $first: "$nombreProducto" },
+      visitas: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { visitas: -1 }
+  },
+  {
+    $limit: 10
+  }
+]);
+
 
 
 
@@ -219,44 +314,41 @@ db = db.getSiblingDB('cafeteria_nosql');
 // 7.3c: Acciones por tipo (1 punto)
 // Agrupar logs por tipo de acción y contar
 
-// TODO: Complete la agregación
-// db.activity_logs.aggregate([
-//   {
-//     $group: {
-//       _id: "$accion",
-//       cantidad: { $sum: 1 }
-//     }
-//   },
-//   {
-//     $sort: { cantidad: -1 }
-//   }
-// ]);
-
-
+db.activity_logs.aggregate([
+  {
+    $group: {
+      _id: "$accion",
+      cantidad: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { cantidad: -1 }
+  }
+]);
 
 
 // 7.3d: Usuarios más activos (1 punto)
 // Encontrar los 5 usuarios con más acciones registradas
 
-// TODO: Complete la agregación
-// db.activity_logs.aggregate([
-//   {
-//     $match: { usuario: { $ne: "anonimo" } }
-//   },
-//   {
-//     $group: {
-//       _id: "$usuario",
-//       total_acciones: { $sum: 1 },
-//       acciones: { $addToSet: "$accion" }
-//     }
-//   },
-//   {
-//     $sort: { total_acciones: -1 }
-//   },
-//   {
-//     $limit: 5
-//   }
-// ]);
+db.activity_logs.aggregate([
+  {
+    $match: { usuario: { $ne: "anonimo" } }
+  },
+  {
+    $group: {
+      _id: "$usuario",
+      total_acciones: { $sum: 1 },
+      acciones: { $addToSet: "$accion" }
+    }
+  },
+  {
+    $sort: { total_acciones: -1 }
+  },
+  {
+    $limit: 5
+  }
+]);
+
 
 
 

@@ -30,23 +30,28 @@ DELIMITER //
 -- Usar ROUND para redondear a 2 decimales
 -- =====================================================
 
--- TODO: Descomente y complete la función
--- DROP FUNCTION IF EXISTS FN_CALCULAR_SUBTOTAL//
---
--- CREATE FUNCTION FN_CALCULAR_SUBTOTAL(
---     p_precio DECIMAL(10,2),
---     p_cantidad INT,
---     p_descuento DECIMAL(5,2)
--- )
--- RETURNS DECIMAL(10,2)
--- DETERMINISTIC
--- BEGIN
---     DECLARE v_subtotal DECIMAL(10,2);
---
---     -- TODO: Calcular subtotal con descuento
---
---     RETURN v_subtotal;
--- END//
+DROP FUNCTION IF EXISTS FN_CALCULAR_SUBTOTAL//
+
+CREATE FUNCTION FN_CALCULAR_SUBTOTAL(
+    p_precio DECIMAL(10,2),
+    p_cantidad INT,
+    p_descuento DECIMAL(5,2)
+)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE v_subtotal DECIMAL(10,2);
+
+    -- Si el descuento es NULL o 0, no aplicar
+    IF p_descuento IS NULL OR p_descuento = 0 THEN
+        SET v_subtotal = ROUND(p_precio * p_cantidad, 2);
+    ELSE
+        SET v_subtotal = ROUND(p_precio * p_cantidad * (1 - p_descuento / 100), 2);
+    END IF;
+
+    RETURN v_subtotal;
+END//
+
 
 
 -- =====================================================
@@ -63,19 +68,17 @@ DELIMITER //
 -- Usar ROUND para redondear a 2 decimales
 -- =====================================================
 
--- TODO: Descomente y complete la función
--- DROP FUNCTION IF EXISTS FN_CALCULAR_IMPUESTO//
---
--- CREATE FUNCTION FN_CALCULAR_IMPUESTO(
---     p_monto DECIMAL(10,2)
--- )
--- RETURNS DECIMAL(10,2)
--- DETERMINISTIC
--- BEGIN
---     -- TODO: Calcular y retornar el impuesto (13%)
---
---     RETURN 0;
--- END//
+DROP FUNCTION IF EXISTS FN_CALCULAR_IMPUESTO//
+
+CREATE FUNCTION FN_CALCULAR_IMPUESTO(
+    p_monto DECIMAL(10,2)
+)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    -- Calcular el impuesto (13%) y redondear a 2 decimales
+    RETURN ROUND(p_monto * 0.13, 2);
+END
 
 
 -- =====================================================
@@ -97,24 +100,38 @@ DELIMITER //
 -- Usar COALESCE para manejar puntos NULL
 -- =====================================================
 
--- TODO: Descomente y complete la función
--- DROP FUNCTION IF EXISTS FN_OBTENER_CATEGORIA_CLIENTE//
---
--- CREATE FUNCTION FN_OBTENER_CATEGORIA_CLIENTE(
---     p_cliente_id INT
--- )
--- RETURNS VARCHAR(20)
--- READS SQL DATA
--- BEGIN
---     DECLARE v_puntos INT;
---     DECLARE v_categoria VARCHAR(20);
---
---     -- TODO: Obtener puntos del cliente
---
---     -- TODO: Determinar categoría según puntos
---
---     RETURN v_categoria;
--- END//
+DROP FUNCTION IF EXISTS FN_OBTENER_CATEGORIA_CLIENTE//
+
+CREATE FUNCTION FN_OBTENER_CATEGORIA_CLIENTE(
+    p_cliente_id INT
+)
+RETURNS VARCHAR(20)
+READS SQL DATA
+BEGIN
+    DECLARE v_puntos INT;
+    DECLARE v_categoria VARCHAR(20);
+
+    -- Obtener puntos del cliente (manejar NULL con COALESCE)
+    SELECT COALESCE(puntos_fidelidad, 0)
+    INTO v_puntos
+    FROM CLIENTE
+    WHERE id = p_cliente_id
+    LIMIT 1;
+
+    -- Determinar categoría según puntos
+    IF v_puntos < 100 THEN
+        SET v_categoria = 'BRONCE';
+    ELSEIF v_puntos < 300 THEN
+        SET v_categoria = 'PLATA';
+    ELSEIF v_puntos < 500 THEN
+        SET v_categoria = 'ORO';
+    ELSE
+        SET v_categoria = 'PLATINO';
+    END IF;
+
+    RETURN v_categoria;
+END
+
 
 
 -- =====================================================
@@ -134,27 +151,34 @@ DELIMITER //
 -- - Retornar NULL si el cliente no tiene pedidos
 -- =====================================================
 
--- TODO: Descomente y complete la función
--- DROP FUNCTION IF EXISTS FN_DIAS_DESDE_ULTIMO_PEDIDO//
---
--- CREATE FUNCTION FN_DIAS_DESDE_ULTIMO_PEDIDO(
---     p_cliente_id INT
--- )
--- RETURNS INT
--- READS SQL DATA
--- BEGIN
---     DECLARE v_ultima_fecha DATETIME;
---     DECLARE v_dias INT;
---
---     -- TODO: Obtener fecha del último pedido no cancelado
---
---     -- TODO: Si no hay pedidos, retornar NULL
---
---     -- TODO: Calcular y retornar días transcurridos
---
---     RETURN v_dias;
--- END//
+DROP FUNCTION IF EXISTS FN_DIAS_DESDE_ULTIMO_PEDIDO//
 
+CREATE FUNCTION FN_DIAS_DESDE_ULTIMO_PEDIDO(
+    p_cliente_id INT
+)
+RETURNS INT
+READS SQL DATA
+BEGIN
+    DECLARE v_ultima_fecha DATETIME;
+    DECLARE v_dias INT;
+
+    -- Obtener la fecha del último pedido no cancelado
+    SELECT MAX(fecha_pedido)
+    INTO v_ultima_fecha
+    FROM PEDIDO
+    WHERE cliente_id = p_cliente_id
+      AND estado != 'CANCELADO';
+
+    -- Si no hay pedidos, retornar NULL
+    IF v_ultima_fecha IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    -- Calcular y retornar días transcurridos
+    SET v_dias = DATEDIFF(NOW(), v_ultima_fecha);
+
+    RETURN v_dias;
+END
 
 -- =====================================================
 -- EJERCICIO EXTRA: FN_CALCULAR_TOTAL_PEDIDO (+3 puntos extra)
@@ -171,21 +195,6 @@ DELIMITER //
 -- 2. Calcular impuesto usando FN_CALCULAR_IMPUESTO
 -- 3. Retornar subtotal + impuesto
 -- =====================================================
-
--- TODO: Descomente y complete la función (OPCIONAL)
--- DROP FUNCTION IF EXISTS FN_CALCULAR_TOTAL_PEDIDO//
---
--- CREATE FUNCTION FN_CALCULAR_TOTAL_PEDIDO(
---     p_pedido_id INT
--- )
--- RETURNS DECIMAL(10,2)
--- READS SQL DATA
--- BEGIN
---     -- TODO: Implementar para puntos extra
---
---     RETURN 0;
--- END//
-
 
 DELIMITER ;
 

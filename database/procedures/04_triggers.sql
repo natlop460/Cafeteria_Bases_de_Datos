@@ -33,16 +33,35 @@ DELIMITER //
 -- Usar JSON_OBJECT() para crear el JSON
 -- =====================================================
 
--- TODO: Descomente y complete el trigger
--- DROP TRIGGER IF EXISTS TRG_AUDITORIA_PEDIDOS_INSERT//
---
--- CREATE TRIGGER TRG_AUDITORIA_PEDIDOS_INSERT
--- AFTER INSERT ON PEDIDO
--- FOR EACH ROW
--- BEGIN
---     -- TODO: Insertar registro en AUDITORIA_PEDIDOS
--- END//
+DROP TRIGGER IF EXISTS TRG_AUDITORIA_PEDIDOS_INSERT//
 
+CREATE TRIGGER TRG_AUDITORIA_PEDIDOS_INSERT
+AFTER INSERT ON PEDIDO
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDITORIA_PEDIDOS (
+        pedido_id,
+        accion,
+        datos_anteriores,
+        datos_nuevos,
+        usuario,
+        fecha_accion
+    )
+    VALUES (
+        NEW.id,
+        'INSERT',
+        NULL,
+        JSON_OBJECT(
+            'cliente_id', NEW.cliente_id,
+            'sucursal_id', NEW.sucursal_id,
+            'estado', NEW.estado,
+            'canal_venta', NEW.canal_venta,
+            'total', NEW.total
+        ),
+        CURRENT_USER(),
+        NOW()
+    );
+END
 
 -- =====================================================
 -- EJERCICIO 4.2: TRG_AUDITORIA_PEDIDOS_UPDATE (4 puntos)
@@ -61,16 +80,38 @@ DELIMITER //
 -- - fecha_accion: NOW()
 -- =====================================================
 
--- TODO: Descomente y complete el trigger
--- DROP TRIGGER IF EXISTS TRG_AUDITORIA_PEDIDOS_UPDATE//
---
--- CREATE TRIGGER TRG_AUDITORIA_PEDIDOS_UPDATE
--- AFTER UPDATE ON PEDIDO
--- FOR EACH ROW
--- BEGIN
---     -- TODO: Insertar registro en AUDITORIA_PEDIDOS
---     -- Usar OLD para datos anteriores y NEW para datos nuevos
--- END//
+DROP TRIGGER IF EXISTS TRG_AUDITORIA_PEDIDOS_UPDATE//
+
+CREATE TRIGGER TRG_AUDITORIA_PEDIDOS_UPDATE
+AFTER UPDATE ON PEDIDO
+FOR EACH ROW
+BEGIN
+    INSERT INTO AUDITORIA_PEDIDOS (
+        pedido_id,
+        accion,
+        datos_anteriores,
+        datos_nuevos,
+        usuario,
+        fecha_accion
+    )
+    VALUES (
+        NEW.id,
+        'UPDATE',
+        JSON_OBJECT(
+            'estado', OLD.estado,
+            'total', OLD.total,
+            'fecha_entrega', OLD.fecha_entrega
+        ),
+        JSON_OBJECT(
+            'estado', NEW.estado,
+            'total', NEW.total,
+            'fecha_entrega', NEW.fecha_entrega
+        ),
+        CURRENT_USER(),
+        NOW()
+    );
+END
+
 
 
 -- =====================================================
@@ -88,20 +129,28 @@ DELIMITER //
 --    - MESSAGE_TEXT: 'Stock insuficiente para completar el pedido'
 -- =====================================================
 
--- TODO: Descomente y complete el trigger
--- DROP TRIGGER IF EXISTS TRG_VALIDAR_STOCK//
---
--- CREATE TRIGGER TRG_VALIDAR_STOCK
--- BEFORE INSERT ON ITEM_PEDIDO
--- FOR EACH ROW
--- BEGIN
---     DECLARE v_stock_actual INT;
---
---     -- TODO: Obtener stock actual del producto
---
---     -- TODO: Validar stock disponible
---
--- END//
+DROP TRIGGER IF EXISTS TRG_VALIDAR_STOCK//
+
+CREATE TRIGGER TRG_VALIDAR_STOCK
+BEFORE INSERT ON ITEM_PEDIDO
+FOR EACH ROW
+BEGIN
+    DECLARE v_stock_actual INT;
+
+    -- 1️⃣ Obtener stock actual del producto
+    SELECT stock
+    INTO v_stock_actual
+    FROM PRODUCTO
+    WHERE id = NEW.producto_id
+    LIMIT 1;
+
+    -- 2️⃣ Validar stock disponible
+    IF v_stock_actual IS NULL OR v_stock_actual < NEW.cantidad THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Stock insuficiente para completar el pedido';
+    END IF;
+END
+
 
 
 -- =====================================================
@@ -124,21 +173,32 @@ DELIMITER //
 -- restar los puntos (usar GREATEST para no quedar negativo)
 -- =====================================================
 
--- TODO: Descomente y complete el trigger
--- DROP TRIGGER IF EXISTS TRG_CALCULAR_PUNTOS//
---
--- CREATE TRIGGER TRG_CALCULAR_PUNTOS
--- AFTER UPDATE ON PEDIDO
--- FOR EACH ROW
--- BEGIN
---     DECLARE v_puntos_ganados INT;
---
---     -- TODO: Verificar si el estado cambió a ENTREGADO
---
---     -- TODO (BONUS): Si se cancela un pedido que ya estaba entregado, restar puntos
---
--- END//
+DROP TRIGGER IF EXISTS TRG_CALCULAR_PUNTOS//
 
+CREATE TRIGGER TRG_CALCULAR_PUNTOS
+AFTER UPDATE ON PEDIDO
+FOR EACH ROW
+BEGIN
+    DECLARE v_puntos_ganados INT;
+
+    -- 1️⃣ Cuando el pedido cambia a ENTREGADO
+    IF NEW.estado = 'ENTREGADO' AND OLD.estado != 'ENTREGADO' THEN
+        SET v_puntos_ganados = FLOOR(NEW.total / 1000);
+
+        UPDATE CLIENTE
+        SET puntos_fidelidad = puntos_fidelidad + v_puntos_ganados
+        WHERE id = NEW.cliente_id;
+    END IF;
+
+    -- 2️⃣ BONUS: Si se cancela un pedido que ya estaba ENTREGADO, restar puntos
+    IF NEW.estado = 'CANCELADO' AND OLD.estado = 'ENTREGADO' THEN
+        SET v_puntos_ganados = FLOOR(OLD.total / 1000);
+
+        UPDATE CLIENTE
+        SET puntos_fidelidad = GREATEST(puntos_fidelidad - v_puntos_ganados, 0)
+        WHERE id = OLD.cliente_id;
+    END IF;
+END
 
 -- =====================================================
 -- EJERCICIO EXTRA: TRG_CALCULAR_SUBTOTAL_ITEM (+3 puntos extra)
@@ -162,7 +222,6 @@ DELIMITER //
 -- BEGIN
 --     -- TODO: Implementar para puntos extra
 -- END//
-
 
 DELIMITER ;
 

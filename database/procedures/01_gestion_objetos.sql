@@ -31,21 +31,25 @@ USE cafeteria_bb;
 -- - Ordenar por año y mes descendente
 -- =====================================================
 
--- TODO: Complete la vista descomentando y completando el código
--- CREATE OR REPLACE VIEW VW_RESUMEN_VENTAS_MENSUALES AS
--- SELECT
---     TODO: Extraer el año de fecha_pedido
---     TODO: Extraer el mes de fecha_pedido
---     TODO: Obtener nombre del mes
---     TODO: Contar cantidad de pedidos
---     TODO: Sumar total de ventas
---     TODO: Calcular promedio por pedido (usar ROUND)
---     TODO: Sumar subtotales
---     TODO: Sumar impuestos
--- FROM PEDIDO p
--- WHERE p.estado != 'CANCELADO'
--- GROUP BY YEAR(p.fecha_pedido), MONTH(p.fecha_pedido), MONTHNAME(p.fecha_pedido)
--- ORDER BY anio DESC, mes DESC;
+CREATE OR REPLACE VIEW VW_RESUMEN_VENTAS_MENSUALES AS
+SELECT
+    YEAR(p.fecha_pedido) AS anio,
+    MONTH(p.fecha_pedido) AS mes,
+    MONTHNAME(p.fecha_pedido) AS nombre_mes,
+    COUNT(p.id) AS cantidad_pedidos,
+    SUM(p.total) AS monto_total,
+    ROUND(AVG(p.total), 2) AS ticket_promedio,
+    SUM(p.subtotal) AS subtotal_total,
+    SUM(p.impuesto) AS impuestos_total
+FROM PEDIDO p
+WHERE p.estado != 'CANCELADO'
+GROUP BY
+    YEAR(p.fecha_pedido),
+    MONTH(p.fecha_pedido),
+    MONTHNAME(p.fecha_pedido)
+ORDER BY
+    anio DESC,
+    mes DESC;
 
 
 -- =====================================================
@@ -69,26 +73,28 @@ USE cafeteria_bb;
 -- - Ordenar por nivel de urgencia y unidades faltantes
 -- =====================================================
 
--- TODO: Complete la vista descomentando y completando el código
--- CREATE OR REPLACE VIEW VW_PRODUCTOS_BAJO_STOCK AS
--- SELECT
---     p.id,
---     p.sku,
---     p.nombre,
---     TODO: Agregar stock_actual (el campo stock de PRODUCTO)
---     TODO: Agregar stock_minimo
---     TODO: Calcular unidades_faltantes = stock_minimo - stock
---     TODO: Agregar c.nombre AS categoria
---     CASE
---         TODO: Implementar lógica de nivel_urgencia
---         WHEN p.stock = 0 THEN 'AGOTADO'
---         WHEN p.stock <= p.stock_minimo * 0.5 THEN 'CRÍTICO'
---         ELSE 'BAJO'
---     END AS nivel_urgencia
--- FROM PRODUCTO p
--- LEFT JOIN CATEGORIA c ON p.categoria_id = c.id
--- WHERE p.stock <= p.stock_minimo AND p.activo = 1
--- ORDER BY nivel_urgencia DESC, unidades_faltantes DESC;
+CREATE OR REPLACE VIEW VW_PRODUCTOS_BAJO_STOCK AS
+SELECT
+    p.id,
+    p.sku,
+    p.nombre,
+    p.stock AS stock_actual,
+    p.stock_minimo,
+    (p.stock_minimo - p.stock) AS unidades_faltantes,
+    c.nombre AS categoria,
+    CASE
+        WHEN p.stock = 0 THEN 'AGOTADO'
+        WHEN p.stock <= p.stock_minimo * 0.5 THEN 'CRÍTICO'
+        ELSE 'BAJO'
+    END AS nivel_urgencia
+FROM PRODUCTO p
+LEFT JOIN CATEGORIA c ON p.categoria_id = c.id
+WHERE p.stock <= p.stock_minimo
+  AND p.activo = 1
+ORDER BY
+    nivel_urgencia DESC,
+    unidades_faltantes DESC;
+
 
 
 -- =====================================================
@@ -106,8 +112,8 @@ USE cafeteria_bb;
 -- - Valor por defecto: 'BRONCE'
 -- =====================================================
 
--- TODO: Escriba el ALTER TABLE para agregar la columna
--- Sintaxis: ALTER TABLE nombre_tabla ADD COLUMN nombre_columna TIPO DEFAULT valor;
+ALTER TABLE CLIENTE
+ADD COLUMN nivel_cliente VARCHAR(20) DEFAULT 'BRONCE';
 
 
 
@@ -119,8 +125,9 @@ USE cafeteria_bb;
 -- Nombre sugerido: CK_PRODUCTO_STOCK_POSITIVO
 -- =====================================================
 
--- TODO: Escriba el ALTER TABLE para agregar el CHECK constraint
--- Sintaxis: ALTER TABLE nombre_tabla ADD CONSTRAINT nombre_constraint CHECK (condicion);
+ALTER TABLE PRODUCTO
+ADD CONSTRAINT CK_PRODUCTO_PRECIO_POSITIVO
+CHECK (precio > 0);
 
 
 
@@ -136,19 +143,25 @@ USE cafeteria_bb;
 -- 3. Elimine ambos objetos de forma segura usando IF EXISTS
 -- =====================================================
 
--- TODO: Crear tabla temporal
+-- Crear tabla temporal
+CREATE TABLE IF NOT EXISTS TEMP_PRODUCTOS_OBSOLETOS (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    producto_id INT NOT NULL,
+    fecha_marcado DATETIME DEFAULT CURRENT_TIMESTAMP,
+    motivo VARCHAR(255)
+);
 
+-- Crear vista de demostración
+CREATE OR REPLACE VIEW VW_OBSOLETA_DEMO AS
+SELECT *
+FROM CATEGORIA
+WHERE activo = 0;
 
+-- Eliminar vista de forma segura
+DROP VIEW IF EXISTS VW_OBSOLETA_DEMO;
 
--- TODO: Crear vista de demostración
-
-
-
--- TODO: Eliminar vista de forma segura (DROP VIEW IF EXISTS ...)
-
-
-
--- TODO: Eliminar tabla de forma segura (DROP TABLE IF EXISTS ...)
+-- Eliminar tabla de forma segura
+DROP TABLE IF EXISTS TEMP_PRODUCTOS_OBSOLETOS;
 
 
 

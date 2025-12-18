@@ -17,12 +17,9 @@ USE cafeteria_bb;
 -- Sintaxis: CREATE INDEX nombre_indice ON tabla (columna);
 -- =====================================================
 
--- TODO: Crear el índice IDX_PEDIDO_FECHA
+CREATE INDEX IDX_PEDIDO_FECHA
+ON PEDIDO (fecha_pedido);
 
-
-
--- 
--- 
 
 
 -- =====================================================
@@ -34,11 +31,9 @@ USE cafeteria_bb;
 -- Sintaxis: CREATE INDEX nombre ON tabla (columna1, columna2);
 -- =====================================================
 
--- TODO: Crear el índice compuesto IDX_PEDIDO_ESTADO_FECHA
+CREATE INDEX IDX_PEDIDO_ESTADO_FECHA
+ON PEDIDO (estado, fecha_pedido);
 
-
--- 
--- 
 
 
 -- =====================================================
@@ -49,11 +44,9 @@ USE cafeteria_bb;
 -- Columnas: pedido_id, producto_id
 -- =====================================================
 
--- TODO: Crear el índice IDX_ITEM_PEDIDO_PRODUCTO
+CREATE INDEX IDX_ITEM_PEDIDO_PRODUCTO
+ON ITEM_PEDIDO (pedido_id, producto_id);
 
-
--- 
--- 
 
 
 
